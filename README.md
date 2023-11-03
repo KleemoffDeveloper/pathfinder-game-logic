@@ -31,11 +31,11 @@ const initialRequest = await openai.chat.completions.create({
   messages: [
       {
         role: "system",
-        content: `We are playing an adventure game. Give me 3 choices to progress through the story. Make sure to label the title of the story and the main plot of the story. Label each choice with [Choice title] and [Choice plot].`,
+        content: `We are playing an adventure game. Label the title and the plot. Give me 3 choices to progress through the story. Make each choice a single sentence.`,
       },
       {
         role: "user",
-        content: "Start the game.",
+        content: `Start the game.`,
       },
   ],
   temperature: 0.8,
@@ -45,8 +45,35 @@ const initialRequest = await openai.chat.completions.create({
 ```
 
 ### Setting the game context from the response
-```js
 
+```js
+// Removes the \n
+const filteredResponse = (response) => response.split("\n").filter((e) => e);
+```
+
+```js
+const response = filteredResponse(initialRequest.choices[0].message.content);
+
+// Set our game context
+let title = response
+  .find((e) => e.substring(0, 5) === "Title")
+  .substring(6)
+  .trim();
+
+let plot = response
+  .find((e) => e.substring(0, 4) === "Plot")
+  .substring(5)
+  .trim();
+
+let choices = response.filter(
+  (e) =>
+    e.includes("1.") ||
+    e.includes("2.") ||
+    e.includes("3.") ||
+    (e.includes("Choice ") && e.length > 10)
+);
+
+console.log(title, plot, choices);
 ```
 
 ### Continuing from user choice
@@ -54,14 +81,14 @@ const initialRequest = await openai.chat.completions.create({
 ```js
 const continuation = await openai.chat.completions.create({
   messages: [
-          {
-            role: "system",
-            content: `We are continuing an adventure game. Give me 3 choices to progress through the story until we reach the end. Choices until end: ${currentChoice}/${maxChoices}`,
-          },
-          {
-            role: "user",
-            content: `Context: ${game.context} My Choice: ${game.choice}`,
-          },
+    {
+      role: "system",
+      content: `We are continuing an adventure game. Give me 3 choices to progress through the story until we reach the end. Choices until end: ${currentChoice}/${maxChoices}`,
+    },
+    {
+      role: "user",
+      content: `Context: ${game.context} My Choice: ${game.choice}`,
+    },
   ],
   temperature: 0.8,
   max_tokens: 500,

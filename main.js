@@ -27,11 +27,11 @@ async function main() {
     messages: [
       {
         role: "system",
-        content: `We are playing an adventure game. Give me 3 choices to progress through the story. Make sure to label the title of the story and the main plot of the story. Label each choice with [Choice title] and [Choice plot].`,
+        content: `We are playing an adventure game. Label the title and the plot. Give me 3 choices to progress through the story. Make each choice a single sentence.`,
       },
       {
         role: "user",
-        content: "Start the game.",
+        content: `Start the game.`,
       },
     ],
     temperature: 0.8,
@@ -39,20 +39,41 @@ async function main() {
     model: "gpt-3.5-turbo",
   });
 
-  console.log(initialRequest.choices[0].message.content);
+  const response = filteredResponse(initialRequest.choices[0].message.content);
+
+  // Set our game context
+  let title = response
+    .find((e) => e.substring(0, 5) === "Title")
+    .substring(6)
+    .trim();
+
+  let plot = response
+    .find((e) => e.substring(0, 4) === "Plot")
+    .substring(5)
+    .trim();
+
+  let choices = response.filter(
+    (e) =>
+      e.includes("1.") ||
+      e.includes("2.") ||
+      e.includes("3.") ||
+      e.includes("Choice ") && e.length > 10
+  );
+
+  console.log(title, plot, choices);
 
   return;
 
   while (program) {
     var command = prompt("Enter a response or command: ");
-    if (command === "stop") {
+    if (command === "stop" || game.currentChoice > game.maxChoices) {
       program = false;
     } else {
       const chatCompletion = await openai.chat.completions.create({
         messages: [
           {
             role: "system",
-            content: `We are continuing an adventure game. Give me 3 choices to progress through the story until we reach the end. Choices until end: ${currentChoice}/${maxChoices}`,
+            content: `We are continuing an adventure game. Give me 3 choices to progress through the story until we reach the end. Label each choice with [Choice title] and [Choice plot]. Choices until end: ${currentChoice}/${maxChoices}`,
           },
           {
             role: "user",
@@ -64,21 +85,12 @@ async function main() {
         model: "gpt-3.5-turbo",
       });
 
+      // Set our context and choice here
+      game.currentChoice++;
+
       console.log(filteredResponse(chatCompletion.choices[0].message.content));
     }
   }
 }
 
 main();
-
-// let title = filteredResponse
-//   .find((e) => e.substring(0, 5) === "Title")
-//   .substring(6)
-//   .trim();
-
-// let plot = "";
-
-// Grabs each choice from the filtered response
-// let choices = filteredResponse.filter((e) => e.substring(0, 6) === "Choice");
-
-// console.log(title, plot, choices);
